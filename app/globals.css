@@ -1,0 +1,106 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fredoka), var(--font-nunito), ui-sans-serif, sans-serif;
+
+  --color-stressed: var(--mood-stressed);
+  --color-stressed-soft: var(--mood-stressed-soft);
+  --color-tired: var(--mood-tired);
+  --color-tired-soft: var(--mood-tired-soft);
+  --color-excited: var(--mood-excited);
+  --color-excited-soft: var(--mood-excited-soft);
+  --color-calm: var(--mood-calm);
+  --color-calm-soft: var(--mood-calm-soft);
+  --color-flame: var(--flame);
+  --color-gold: var(--gold);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: light;
+  --background: oklch(0.975 0.015 85);
+  --foreground: oklch(0.25 0.05 285);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.05 285);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.05 285);
+  --primary: oklch(0.52 0.22 290);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.03 290);
+  --secondary-foreground: oklch(0.35 0.12 290);
+  --muted: oklch(0.95 0.015 85);
+  --muted-foreground: oklch(0.5 0.04 285);
+  --accent: oklch(0.95 0.03 290);
+  --accent-foreground: oklch(0.35 0.12 290);
+  --destructive: oklch(0.58 0.22 25);
+  --border: oklch(0.9 0.02 290);
+  --input: oklch(0.9 0.02 290);
+  --ring: oklch(0.52 0.22 290);
+  --radius: 1rem;
+
+  --mood-stressed: oklch(0.6 0.21 15);
+  --mood-stressed-soft: oklch(0.96 0.03 15);
+  --mood-tired: oklch(0.52 0.18 265);
+  --mood-tired-soft: oklch(0.95 0.03 265);
+  --mood-excited: oklch(0.68 0.19 50);
+  --mood-excited-soft: oklch(0.96 0.05 70);
+  --mood-calm: oklch(0.6 0.14 165);
+  --mood-calm-soft: oklch(0.96 0.04 165);
+  --flame: oklch(0.68 0.21 40);
+  --gold: oklch(0.8 0.16 85);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.animate-pop {
+  animation: pop 0.45s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop {
+    animation: none;
+  }
+}
