@@ -81,10 +81,10 @@ export default function MoodQuestPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Gamification State
-  const [streakDays, setStreakDays] = useState(3);
-  const [totalXp, setTotalXp] = useState(250);
-  const [weeklyXp, setWeeklyXp] = useState([40, 60, 30, 80, 40, 0, 0]);
+  // Gamification State (Reset to 0 as requested)
+  const [streakDays, setStreakDays] = useState(0);
+  const [totalXp, setTotalXp] = useState(0);
+  const [weeklyXp, setWeeklyXp] = useState([0, 0, 0, 0, 0, 0, 0]);
 
   const currentLevel = Math.floor(totalXp / 100) + 1;
   const progressToNextLevel = totalXp % 100;
@@ -153,7 +153,12 @@ export default function MoodQuestPage() {
     if (!wereAllCompleted && areAllNowCompleted && questData) {
       const earnedPoints = questData.quest.points || 50;
       setTotalXp((prev) => prev + earnedPoints);
-      setStreakDays((prev) => prev + 1);
+      
+      if (streakDays === 0) {
+        setStreakDays(1);
+      } else {
+        setStreakDays((prev) => prev + 1);
+      }
 
       setWeeklyXp((prev) => {
         const updatedChart = [...prev];
@@ -312,6 +317,69 @@ export default function MoodQuestPage() {
           {activeTab === "quest" && (
             <div className="space-y-8 animate-fadeIn">
               
+              {/* --- RESTORED GAMIFICATION DASHBOARD BOARD (Streak, XP, Rank, & Weekly Bar Graph) --- */}
+              <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6 relative overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                  
+                  {/* Streak Counter */}
+                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col items-center justify-center relative group hover:border-amber-500/30 transition-all">
+                    <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Current Streak</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-2xl">🔥</span>
+                      <span className="text-2xl font-black text-amber-400">{streakDays} Days</span>
+                    </div>
+                  </div>
+
+                  {/* Total XP */}
+                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col items-center justify-center group hover:border-indigo-500/30 transition-all">
+                    <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Experience</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-2xl">⚡</span>
+                      <span className="text-2xl font-black text-indigo-400">{totalXp} XP</span>
+                    </div>
+                  </div>
+
+                  {/* Level & Progress Bar */}
+                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col justify-center group hover:border-purple-500/30 transition-all">
+                    <div className="flex justify-between items-center w-full px-1 mb-1.5">
+                      <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Rank Level</span>
+                      <span className="text-xs font-bold text-purple-400">Lvl {currentLevel}</span>
+                    </div>
+                    <div className="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-700/50">
+                      <div
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${progressToNextLevel}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 text-right font-medium">{progressToNextLevel}/100 XP to Lvl {currentLevel + 1}</span>
+                  </div>
+                </div>
+
+                {/* Weekly XP Bar Chart */}
+                <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-300">Weekly Consistency</span>
+                    <span className="text-slate-500 font-mono">Target: 200 XP</span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-2.5 items-end h-24 bg-slate-950/40 p-3 rounded-2xl border border-slate-800/50">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => {
+                      const heightPercent = Math.min((weeklyXp[idx] / 50) * 100, 100);
+                      return (
+                        <div key={day} className="flex flex-col items-center gap-2 h-full justify-end group">
+                          <div className="w-full bg-slate-800/60 rounded-lg overflow-hidden h-14 flex items-end p-0.5 border border-slate-700/30">
+                            <div
+                              className="w-full bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-purple-400 transition-all rounded-sm"
+                              style={{ height: `${heightPercent > 0 ? heightPercent : 8}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium group-hover:text-slate-200 transition-colors">{day}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {/* 10 Sample Entries Showcase */}
               <div className="backdrop-blur-2xl bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-4">
                 <div className="flex items-center justify-between">
