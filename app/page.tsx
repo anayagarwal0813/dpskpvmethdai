@@ -292,9 +292,7 @@ export default function MoodQuestPage() {
             Team Visionary Coders
           </span>
           <div className="text-[11px] text-slate-300 space-y-0.5 font-medium">
-            <p className="hover:text-white transition-colors">✨ Anay Agarwal</p>
-            <p className="hover:text-white transition-colors">✨ Aadvik Singh</p>
-            <p className="hover:text-white transition-colors">✨ Hiral Kalia</p>
+            <p className="hover:text-white transition-colors">✨ Anay Agarwal 8C</p>
           </div>
           <span className="text-[10px] text-slate-500 block pt-1 font-mono">October 2026 • Hackathon</span>
         </div>
