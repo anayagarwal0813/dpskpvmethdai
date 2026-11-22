@@ -22,6 +22,11 @@ interface QuestData {
   musicUrl?: string;
 }
 
+interface ChatMessage {
+  sender: "user" | "ai";
+  text: string;
+}
+
 // --- 10 SAMPLE ENTRIES FOR TESTING ---
 const SAMPLE_ENTRIES = [
   {
@@ -66,6 +71,13 @@ const SAMPLE_ENTRIES = [
   },
 ];
 
+const INITIAL_CHAT: ChatMessage[] = [
+  {
+    sender: "ai",
+    text: "Hi! I'm Mood AI. Ask me anything about managing stress, study routines, moods, or everyday reflection.",
+  },
+];
+
 export default function MoodQuestPage() {
   const [activeTab, setActiveTab] = useState<"quest" | "chat" | "diagnostics" | "about">("quest");
 
@@ -74,14 +86,12 @@ export default function MoodQuestPage() {
   const [questData, setQuestData] = useState<QuestData | null>(null);
   const [completedSteps, setCompletedSteps] = useState<boolean[]>([false, false, false]);
 
-  // Chat Tab State
-  const [chatMessages, setChatMessages] = useState([
-    { sender: "ai", text: "Hello! I'm your Mood AI companion. How are your classes or day going so far?" }
-  ]);
+  // Independent AI Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Gamification State (Reset to 0 as requested)
+  // Gamification State (Reset to 0)
   const [streakDays, setStreakDays] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
   const [weeklyXp, setWeeklyXp] = useState([0, 0, 0, 0, 0, 0, 0]);
@@ -116,25 +126,25 @@ export default function MoodQuestPage() {
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
-      // Fallback simulation for reliable hackathon demo presentation
       setQuestData({
         moodCategory: "Stressed / Overwhelmed",
         emotionSegregation: {
           primary: "Anxiety",
-          secondary: ["Academic Pressure", "Fatigue"]
+          secondary: ["Academic Pressure", "Fatigue"],
         },
-        moodSummary: "You are experiencing significant pressure regarding your workload. Taking small, manageable steps will help regain control.",
+        moodSummary:
+          "You are experiencing significant pressure regarding your workload. Taking small, manageable steps will help regain control.",
         quest: {
           title: "The 15-Minute Focus Reset",
           description: "Break your tasks down into micro-steps to reduce mental clutter.",
           steps: [
             "Take a 5-minute deep breathing break away from your screen.",
             "Write down only the top 1 priority task for the next hour.",
-            "Drink a full glass of water and stretch your shoulders."
+            "Drink a full glass of water and stretch your shoulders.",
           ],
-          points: 50
+          points: 50,
         },
-        musicUrl: "https://www.youtube.com/embed/5qap5aO4i9A"
+        musicUrl: "https://www.youtube.com/embed/5qap5aO4i9A",
       });
       setCompletedSteps([false, false, false]);
     } finally {
@@ -153,7 +163,7 @@ export default function MoodQuestPage() {
     if (!wereAllCompleted && areAllNowCompleted && questData) {
       const earnedPoints = questData.quest.points || 50;
       setTotalXp((prev) => prev + earnedPoints);
-      
+
       if (streakDays === 0) {
         setStreakDays(1);
       } else {
@@ -170,41 +180,56 @@ export default function MoodQuestPage() {
     }
   };
 
+  // --- INDEPENDENT BACKEND AI CHAT HANDLER ---
   const handleSendChat = async () => {
-    if (!chatInput.trim() || chatLoading) return;
-    const userMsg = chatInput;
-    setChatMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+    const trimmed = chatInput.trim();
+    if (!trimmed || chatLoading) return;
+
+    const nextMessages: ChatMessage[] = [...chatMessages, { sender: "user", text: trimmed }];
+    setChatMessages(nextMessages);
     setChatInput("");
     setChatLoading(true);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
+
+      const data = await res.json();
+      const replyText =
+        typeof data?.reply === "string" && data.reply.trim().length > 0
+          ? data.reply.trim()
+          : "I cannot respond to this question.";
+
+      setChatMessages((prev) => [...prev, { sender: "ai", text: replyText }]);
+    } catch {
       setChatMessages((prev) => [
         ...prev,
-        {
-          sender: "ai",
-          text: `I hear you. Dealing with "${userMsg}" can feel exhausting. Let's take a deep breath together. Would you like a short 10-minute break or a guided breathing exercise?`
-        }
+        { sender: "ai", text: "Unable to reach the chat service. Please check your connection and try again." },
       ]);
+    } finally {
       setChatLoading(false);
-    }, 1000);
+    }
   };
 
   const allCompleted = completedSteps.every(Boolean);
 
   return (
     <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col md:flex-row font-sans selection:bg-indigo-500 selection:text-white">
-      
       {/* --- SIDEBAR NAVIGATION (4 Pages) --- */}
       <aside className="w-full md:w-72 bg-[#0b0f19]/90 border-r border-slate-800/80 p-6 flex flex-col justify-between backdrop-blur-2xl shrink-0 shadow-2xl">
         <div className="space-y-6">
-          
           {/* Logo & Branding */}
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 text-2xl animate-pulse">
               🌈
             </div>
             <div>
-              <h2 className="font-black text-white tracking-tight text-lg bg-clip-text bg-gradient-to-r from-white to-slate-300">Mood Quest</h2>
+              <h2 className="font-black text-white tracking-tight text-lg bg-clip-text bg-gradient-to-r from-white to-slate-300">
+                Mood Quest
+              </h2>
               <p className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">DPS Knowledge Park-V</p>
             </div>
           </div>
@@ -214,7 +239,7 @@ export default function MoodQuestPage() {
           {/* Navigation Menu */}
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-3 mb-2">Quest Hub</p>
-            
+
             <button
               onClick={() => setActiveTab("quest")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 ${
@@ -263,7 +288,9 @@ export default function MoodQuestPage() {
 
         {/* Team Credits Footer */}
         <div className="pt-6 border-t border-slate-900 space-y-2 bg-slate-950/40 p-4 rounded-2xl border border-slate-800/40">
-          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400 block">Team Visionary Coders</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400 block">
+            Team Visionary Coders
+          </span>
           <div className="text-[11px] text-slate-300 space-y-0.5 font-medium">
             <p className="hover:text-white transition-colors">✨ Anay Agarwal</p>
             <p className="hover:text-white transition-colors">✨ Aadvik Singh</p>
@@ -275,17 +302,15 @@ export default function MoodQuestPage() {
 
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 min-h-screen p-4 sm:p-10 overflow-y-auto relative">
-        
         {/* Stunning Ambient Glows */}
         <div className="absolute top-[-5%] right-[5%] w-[500px] h-[350px] bg-indigo-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute bottom-[5%] left-[10%] w-[450px] h-[350px] bg-purple-600/12 blur-[140px] rounded-full pointer-events-none" />
 
         <div className="max-w-4xl mx-auto space-y-8 relative z-10">
-
           {/* Top Header Banner */}
           <div className="backdrop-blur-2xl bg-slate-900/70 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-indigo-500 to-purple-500" />
-            
+
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold tracking-wide uppercase">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -316,12 +341,9 @@ export default function MoodQuestPage() {
           {/* ================= PAGE 1: CREATE A QUEST & 10 SAMPLES ================= */}
           {activeTab === "quest" && (
             <div className="space-y-8 animate-fadeIn">
-              
-              {/* --- RESTORED GAMIFICATION DASHBOARD BOARD (Streak, XP, Rank, & Weekly Bar Graph) --- */}
+              {/* Gamification Dashboard & Weekly Bar Graph */}
               <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6 relative overflow-hidden">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                  
-                  {/* Streak Counter */}
                   <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col items-center justify-center relative group hover:border-amber-500/30 transition-all">
                     <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Current Streak</span>
                     <div className="flex items-center gap-2 mt-1">
@@ -330,7 +352,6 @@ export default function MoodQuestPage() {
                     </div>
                   </div>
 
-                  {/* Total XP */}
                   <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col items-center justify-center group hover:border-indigo-500/30 transition-all">
                     <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Experience</span>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -339,7 +360,6 @@ export default function MoodQuestPage() {
                     </div>
                   </div>
 
-                  {/* Level & Progress Bar */}
                   <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col justify-center group hover:border-purple-500/30 transition-all">
                     <div className="flex justify-between items-center w-full px-1 mb-1.5">
                       <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Rank Level</span>
@@ -351,7 +371,9 @@ export default function MoodQuestPage() {
                         style={{ width: `${progressToNextLevel}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-slate-500 mt-1.5 text-right font-medium">{progressToNextLevel}/100 XP to Lvl {currentLevel + 1}</span>
+                    <span className="text-[10px] text-slate-500 mt-1.5 text-right font-medium">
+                      {progressToNextLevel}/100 XP to Lvl {currentLevel + 1}
+                    </span>
                   </div>
                 </div>
 
@@ -372,7 +394,9 @@ export default function MoodQuestPage() {
                               style={{ height: `${heightPercent > 0 ? heightPercent : 8}%` }}
                             />
                           </div>
-                          <span className="text-[11px] text-slate-400 font-medium group-hover:text-slate-200 transition-colors">{day}</span>
+                          <span className="text-[11px] text-slate-400 font-medium group-hover:text-slate-200 transition-colors">
+                            {day}
+                          </span>
                         </div>
                       );
                     })}
@@ -399,7 +423,9 @@ export default function MoodQuestPage() {
                       <span className="text-xs font-bold text-slate-300 group-hover:text-indigo-400 line-clamp-2">
                         {sample.title}
                       </span>
-                      <span className="text-[10px] text-slate-500 mt-2 font-mono group-hover:translate-x-1 transition-transform">Load entry →</span>
+                      <span className="text-[10px] text-slate-500 mt-2 font-mono group-hover:translate-x-1 transition-transform">
+                        Load entry →
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -409,7 +435,7 @@ export default function MoodQuestPage() {
               <div className="backdrop-blur-2xl bg-slate-900/70 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                    <span>📝</span> What's on your mind? (Diary Entry)
+                    <span>📝</span> What&apos;s on your mind? (Diary Entry)
                   </label>
                   <span className="text-xs text-slate-500 font-mono">{entryText.length}/1500</span>
                 </div>
@@ -435,7 +461,7 @@ export default function MoodQuestPage() {
                       <span>Analyzing Mood Spectrum...</span>
                     </div>
                   ) : (
-                    <span>Understand my mood & build quest 🚀</span>
+                    <span>Understand my mood &amp; build quest 🚀</span>
                   )}
                 </button>
               </div>
@@ -443,15 +469,12 @@ export default function MoodQuestPage() {
               {/* Results & Quest Card */}
               {questData && (
                 <div className="backdrop-blur-2xl bg-slate-900/90 border border-indigo-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-fadeIn relative overflow-hidden">
-                  
                   <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                     <div>
                       <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">
                         Detected Mood Classification
                       </span>
-                      <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
-                        {questData.moodCategory}
-                      </h2>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">{questData.moodCategory}</h2>
                     </div>
                     <span className="rounded-full bg-indigo-500/20 border border-indigo-500/40 px-4 py-1.5 text-xs font-bold text-indigo-300 shadow-inner">
                       +{questData.quest.points} XP Available
@@ -471,7 +494,10 @@ export default function MoodQuestPage() {
                         </span>
                         <span className="text-xs text-slate-400 font-medium ml-2">Secondary:</span>
                         {questData.emotionSegregation.secondary.map((emo, idx) => (
-                          <span key={idx} className="px-2.5 py-1 rounded-xl bg-blue-500/15 text-blue-300 text-xs font-medium border border-blue-500/30">
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 rounded-xl bg-blue-500/15 text-blue-300 text-xs font-medium border border-blue-500/30"
+                          >
                             {emo}
                           </span>
                         ))}
@@ -481,7 +507,7 @@ export default function MoodQuestPage() {
 
                   {/* Summary */}
                   <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 text-slate-200 text-sm leading-relaxed italic shadow-sm">
-                    "{questData.moodSummary}"
+                    &ldquo;{questData.moodSummary}&rdquo;
                   </div>
 
                   {/* 3-Step Interactive Quest */}
@@ -525,9 +551,14 @@ export default function MoodQuestPage() {
                     <div className="pt-4 border-t border-slate-800 space-y-3">
                       <div className="flex justify-between items-center">
                         <h4 className="font-bold text-indigo-300 text-sm flex items-center gap-2">
-                          <span>🎵</span> Relaxing Lo-Fi & Ambient Hub
+                          <span>🎵</span> Relaxing Lo-Fi &amp; Ambient Hub
                         </h4>
-                        <a href={questData.musicUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:underline font-semibold">
+                        <a
+                          href={questData.musicUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-indigo-400 hover:underline font-semibold"
+                        >
                           Open Full Screen ↗
                         </a>
                       </div>
@@ -536,7 +567,6 @@ export default function MoodQuestPage() {
                       </div>
                     </div>
                   )}
-
                 </div>
               )}
             </div>
@@ -548,11 +578,13 @@ export default function MoodQuestPage() {
               <div className="flex justify-between items-center border-b border-slate-800 pb-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">Talk with Mood AI</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Talk through a tough moment, plan a small task, or reflect on your day.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Independent wellness &amp; reflection assistant. Out-of-scope questions receive &ldquo;I cannot respond to this question.&rdquo;
+                  </p>
                 </div>
                 <button
-                  onClick={() => setChatMessages([{ sender: "ai", text: "Chat cleared. How can I support you right now?" }])}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition shadow-sm"
+                  onClick={() => setChatMessages(INITIAL_CHAT)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition shadow-sm cursor-pointer"
                 >
                   Clear chat
                 </button>
@@ -562,11 +594,13 @@ export default function MoodQuestPage() {
               <div className="h-96 overflow-y-auto space-y-4 p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 shadow-inner">
                 {chatMessages.map((msg, idx) => (
                   <div key={idx} className={`flex gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`p-4 rounded-2xl max-w-md text-sm leading-relaxed shadow-md ${
-                      msg.sender === "user"
-                        ? "bg-indigo-600 text-white rounded-br-none"
-                        : "bg-slate-900 text-slate-200 border border-slate-800 rounded-bl-none"
-                    }`}>
+                    <div
+                      className={`p-4 rounded-2xl max-w-md text-sm leading-relaxed shadow-md ${
+                        msg.sender === "user"
+                          ? "bg-indigo-600 text-white rounded-br-none"
+                          : "bg-slate-900 text-slate-200 border border-slate-800 rounded-bl-none"
+                      }`}
+                    >
                       {msg.text}
                     </div>
                   </div>
@@ -590,7 +624,8 @@ export default function MoodQuestPage() {
                 />
                 <button
                   onClick={handleSendChat}
-                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 font-bold text-sm text-white hover:opacity-95 transition shadow-lg cursor-pointer"
+                  disabled={chatLoading || !chatInput.trim()}
+                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 font-bold text-sm text-white hover:opacity-95 disabled:opacity-50 transition shadow-lg cursor-pointer"
                 >
                   Send 🚀
                 </button>
@@ -610,10 +645,15 @@ export default function MoodQuestPage() {
                 <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center">
                     <h3 className="font-bold text-sm text-slate-200">Google Gemini API</h3>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold">Connected ✓</span>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                      Connected ✓
+                    </span>
                   </div>
                   <p className="text-xs text-slate-400">Used for deep reasoning, quest generation, and empathetic summaries.</p>
-                  <button onClick={() => alert("Gemini API connection test successful!")} className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl text-xs font-bold text-indigo-300 transition cursor-pointer">
+                  <button
+                    onClick={() => alert("Gemini API connection test successful!")}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl text-xs font-bold text-indigo-300 transition cursor-pointer"
+                  >
                     Test Gemini API
                   </button>
                 </div>
@@ -621,10 +661,17 @@ export default function MoodQuestPage() {
                 <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center">
                     <h3 className="font-bold text-sm text-slate-200">Groq / Hugging Face API</h3>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold">Connected ✓</span>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                      Connected ✓
+                    </span>
                   </div>
-                  <p className="text-xs text-slate-400">Used for fast mood classification and sentiment emotion parsing.</p>
-                  <button onClick={() => alert("Hugging Face / Groq API test successful!")} className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl text-xs font-bold text-indigo-300 transition cursor-pointer">
+                  <p className="text-xs text-slate-400">
+                    Powers `/api/chat` (`llama-3.3-70b-versatile`) and fast mood classification.
+                  </p>
+                  <button
+                    onClick={() => alert("Hugging Face / Groq API test successful!")}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl text-xs font-bold text-indigo-300 transition cursor-pointer"
+                  >
                     Test AI Classifier API
                   </button>
                 </div>
@@ -636,29 +683,37 @@ export default function MoodQuestPage() {
           {activeTab === "about" && (
             <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-fadeIn">
               <div>
-                <h2 className="text-xl font-bold text-white">About & Safety Guidelines</h2>
+                <h2 className="text-xl font-bold text-white">About &amp; Safety Guidelines</h2>
                 <p className="text-xs text-slate-400 mt-1">Built with student safety and privacy at the absolute core.</p>
               </div>
 
               <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 shadow-sm">
                   <h4 className="font-black text-indigo-300 text-xs uppercase tracking-wider">Purpose</h4>
-                  <p className="text-xs text-slate-300">Mood Quest supports reflection and small, manageable actions. It is a supportive student wellbeing prototype and is not a medical diagnosis or replacement for trusted adults or professional support.</p>
+                  <p className="text-xs text-slate-300">
+                    Mood Quest supports reflection and small, manageable actions. It is a supportive student wellbeing
+                    prototype and is not a medical diagnosis or replacement for trusted adults or professional support.
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 shadow-sm">
                   <h4 className="font-black text-indigo-300 text-xs uppercase tracking-wider">Privacy First</h4>
-                  <p className="text-xs text-slate-300">Chat history is kept in the current session. No personal identifying information, real names, home addresses, or passwords are saved or logged permanently.</p>
+                  <p className="text-xs text-slate-300">
+                    Chat history is kept in the current session. No personal identifying information, real names, home
+                    addresses, or passwords are saved or logged permanently.
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 shadow-sm">
                   <h4 className="font-black text-indigo-300 text-xs uppercase tracking-wider">Limitations</h4>
-                  <p className="text-xs text-slate-300">AI emotion models can occasionally misread sarcasm, slang, or mixed feelings. Students always have the ability to override or correct their mood classification manually.</p>
+                  <p className="text-xs text-slate-300">
+                    AI emotion models can occasionally misread sarcasm, slang, or mixed feelings. Students always have the
+                    ability to override or correct their mood classification manually.
+                  </p>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </main>
     </div>
